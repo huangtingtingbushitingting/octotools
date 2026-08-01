@@ -1,0 +1,9 @@
+.git
+.idea
+__pycache__
+*.pyc
+.env
+notebooks/.env
+examples/notebooks/.env
+notebooks/solver_cache
+**/.ipynb_checkpoints
