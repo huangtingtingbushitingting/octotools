@@ -1,0 +1,15 @@
+services:
+  octotools:
+    build:
+      context: .
+    image: octotools-local:py310
+    container_name: octotools
+    working_dir: /workspace/octotools
+    ports:
+      - "8888:8888"
+    volumes:
+      - type: bind
+        source: "D:\\octotools"
+        target: /workspace/octotools
+    env_file:
+      - .env

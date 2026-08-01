@@ -1,0 +1,9 @@
+services:
+  octotools:
+    volumes:
+      - type: bind
+        source: "D:\\agentic-plan-cache"
+        target: /workspace/agentic-plan-cache
+
+    environment:
+      PYTHONPATH: "/workspace/octotools:/workspace/agentic-plan-cache"
