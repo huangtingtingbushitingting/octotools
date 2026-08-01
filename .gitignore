@@ -182,3 +182,6 @@ examples/notebooks/local_model/*
 
 #Vscode settings
 .vscode/
+# Local IDE and recycle-bin files
+.idea/
+.Trash-0/
