@@ -20,7 +20,9 @@ class Solver:
         max_time: int = 300,
         max_tokens: int = 4000,
         root_cache_dir: str = "cache",
-        verbose: bool = True
+        verbose: bool = True,
+        plan_cache_manager=None,
+        plan_cache_mode: str = "off",
     ):
         self.planner = planner
         self.memory = memory
@@ -33,6 +35,22 @@ class Solver:
         assert all(output_type in ["base", "final", "direct"] for output_type in self.output_types), "Invalid output type. Supported types are 'base', 'final', 'direct'."
         #参数校验断言
         self.verbose = verbose
+        valid_plan_cache_modes = {"off", "shadow"}
+
+        if plan_cache_mode not in valid_plan_cache_modes:
+            raise ValueError(
+                f"Invalid plan cache mode: {plan_cache_mode}. "
+                f"Expected one of: {sorted(valid_plan_cache_modes)}"
+            )
+
+        if plan_cache_mode != "off" and plan_cache_manager is None:
+            raise ValueError(
+                "A plan_cache_manager is required when plan cache mode "
+                "is not 'off'."
+            )
+
+        self.plan_cache_manager = plan_cache_manager
+        self.plan_cache_mode = plan_cache_mode
     def solve(self, question: str, image_path: Optional[str] = None):#如果给出了image_path则在planner中会多一个get_image_info的动作
         """
         Solve a single problem from the benchmark dataset(基准数据集).
@@ -40,6 +58,9 @@ class Solver:
         Args:
             index (int): Index of the problem to solve
         """
+        # Each solve call must start with isolated query memory.
+        self.memory.reset()
+        self.memory.set_query(question)
         # Update cache directory for the executor
         self.executor.set_query_cache_dir(self.root_cache_dir)
 
@@ -67,7 +88,61 @@ class Solver:
         if {'final', 'direct'} & set(self.output_types):
             if self.verbose:
                 print(f"\n==> 🐙 Reasoning Steps from OctoTools (Deep Thinking...)")
+            plan_cache_lookup = None
+            plan_cache_info = None
 
+        if self.plan_cache_mode == "shadow":
+            plan_cache_info = {
+                "enabled": True,
+                "mode": "shadow",
+                "hit": False,
+                "keyword": None,
+                "cache_key": None,
+                "template_tools": [],
+                "template_stored": False,
+                "cache_size": self.plan_cache_manager.size,
+                "error": None,
+            }
+            json_data["plan_cache"] = plan_cache_info
+
+            try:
+                plan_cache_lookup = self.plan_cache_manager.lookup(
+                    question,
+                    self.planner.available_tools,
+                    has_image=bool(image_path),
+                )
+
+                plan_cache_info["hit"] = plan_cache_lookup.hit
+                plan_cache_info["keyword"] = plan_cache_lookup.keyword
+                plan_cache_info["cache_key"] = (
+                    plan_cache_lookup.cache_key
+                )
+
+                if plan_cache_lookup.template is not None:
+                    plan_cache_info["template_tools"] = [
+                        step.tool_name
+                        for step in plan_cache_lookup.template.steps
+                    ]
+
+                if self.verbose:
+                    print(
+                        "\n==> APC Shadow Lookup:"
+                        f"\n[Hit]: {plan_cache_lookup.hit}"
+                        f"\n[Keyword]: {plan_cache_lookup.keyword}"
+                        f"\n[Cache Key]: {plan_cache_lookup.cache_key}"
+                    )
+
+            except Exception as error:
+                plan_cache_info["error"] = (
+                    "lookup failed: "
+                    f"{type(error).__name__}: {error}"
+                )
+
+                if self.verbose:
+                    print(
+                        "\n==> APC shadow lookup failed: "
+                        f"{error}"
+                    )
             # [1] Analyze query
             query_start_time = time.time()
             query_analysis = self.planner.analyze_query(question, image_path)
@@ -80,6 +155,8 @@ class Solver:
             # Main execution loop
             step_count = 0
             action_times = []
+            memory_actions = self.memory.get_actions()
+            conclusion = None
             while step_count < self.max_steps and (time.time() - query_start_time) < self.max_time:#防止陷入死循环以及长时间响应
                 step_count += 1
                 step_start_time = time.time()
@@ -188,22 +265,68 @@ class Solver:
                 direct_output = self.planner.generate_direct_output(question, image_path, self.memory)
                 json_data["direct_output"] = direct_output
                 print(f"\n==> 🐙 Final Answer:\n\n{direct_output}")
+            if (
+                self.plan_cache_mode == "shadow"
+                and plan_cache_lookup is not None
+                and not plan_cache_lookup.hit
+                and conclusion == "STOP"
+            ):
+                try:
+                    stored_template = (
+                        self.plan_cache_manager.store_successful_trace(
+                            plan_cache_lookup,
+                            memory_actions,
+                            self.planner.available_tools,
+                        )
+                    )
 
+                    plan_cache_info["template_stored"] = (
+                        stored_template is not None
+                    )
+                    plan_cache_info["cache_size"] = (
+                        self.plan_cache_manager.size
+                    )
+
+                    if self.verbose:
+                        print(
+                            "\n==> APC Shadow Store:"
+                            f"\n[Stored]: "
+                            f"{stored_template is not None}"
+                            f"\n[Cache Size]: "
+                            f"{self.plan_cache_manager.size}"
+                        )
+
+                except Exception as error:
+                    plan_cache_info["error"] = (
+                        "template storage failed: "
+                        f"{type(error).__name__}: {error}"
+                    )
+
+                    if self.verbose:
+                        print(
+                            "\n==> APC shadow template storage failed: "
+                            f"{error}"
+                        )
             print(f"\n[Total Time]: {round(time.time() - query_start_time, 2)}s")
             print(f"\n==> ✅ Query Solved!")
 
         return json_data#json_data存放了变量final_output/direct_output/、memory_action\step_count\execution_time
 
-def construct_solver(#初始化
-                    llm_engine_name : str = "gpt-4o",
-                     enabled_tools : list[str] = ["all"],
-                     output_types : str = "final,direct",
-                     max_steps : int = 10,
-                     max_time : int = 300,
-                     max_tokens : int = 4000,
-                     root_cache_dir : str = "solver_cache",
-                     verbose : bool = True,
-                     vllm_config_path : str = None):
+def construct_solver(
+    llm_engine_name: str = "gpt-4o",
+    enabled_tools: list[str] = ["all"],
+    output_types: str = "final,direct",
+    max_steps: int = 10,
+    max_time: int = 300,
+    max_tokens: int = 4000,
+    root_cache_dir: str = "solver_cache",
+    verbose: bool = True,
+    vllm_config_path: str = None,
+    enable_plan_cache: bool = False,
+    plan_cache_mode: str = "shadow",
+    cheap_llm_engine_name: str | None = None,
+    plan_cache_path: str = "solver_cache/apc_plan_cache.json",
+    plan_cache_max_size: int = 128,):
     
     # Instantiate Initializer
     initializer = Initializer(
@@ -230,7 +353,31 @@ def construct_solver(#初始化
         root_cache_dir=root_cache_dir,
         verbose=verbose,
     )
+    plan_cache_manager = None
+    effective_plan_cache_mode = "off"
 
+    if enable_plan_cache:
+        from octotools.plan_cache.llm_adapter import OctoToolsLLMProvider
+        from octotools.plan_cache.manager import PlanCacheManager
+        if plan_cache_mode != "shadow":
+            raise ValueError(
+                "Only 'shadow' plan cache mode is currently supported."
+            )
+
+        cache_model_name = cheap_llm_engine_name or llm_engine_name
+
+        cache_llm = OctoToolsLLMProvider(
+            model_string=cache_model_name,
+            is_multimodal=False,
+        )
+
+        plan_cache_manager = PlanCacheManager(
+            cache_llm,
+            cache_path=plan_cache_path,
+            max_size=plan_cache_max_size,
+        )
+
+        effective_plan_cache_mode = plan_cache_mode
     # Instantiate Solver
     solver = Solver(
         planner=planner,
@@ -242,6 +389,8 @@ def construct_solver(#初始化
         max_tokens=max_tokens,
         root_cache_dir=root_cache_dir,
         verbose=verbose,
+        plan_cache_manager=plan_cache_manager,
+        plan_cache_mode=effective_plan_cache_mode,
     )
     return solver
 

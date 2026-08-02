@@ -80,4 +80,8 @@ class Memory:
     
     def get_actions(self) -> Dict[str, Dict[str, Any]]:
         return self.actions
-    
+    def reset(self) -> None:
+        """Clear all query-specific state before solving a new query."""
+        self.query = None
+        self.files.clear()
+        self.actions.clear()
