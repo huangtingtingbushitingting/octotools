@@ -48,7 +48,7 @@ class PlanCacheManager:
         )
         self._keyword_extractor = KeywordExtractor(llm)
         self._template_extractor = TemplateExtractor(llm)
-
+        self._query_keyword_cache: dict[str, str] = {}
     @property
     def size(self) -> int:
         return self._cache.size
@@ -62,7 +62,19 @@ class PlanCacheManager:
     ) -> PlanCacheLookup:
         """Extract the intent and query the context-aware plan cache."""
         tools = tuple(available_tools)
-        keyword = self._keyword_extractor.extract(query)
+
+        normalized_query = " ".join(
+            query.casefold().split()
+        )
+
+        keyword = self._query_keyword_cache.get(
+            normalized_query
+        )
+
+        if keyword is None:
+            keyword = self._keyword_extractor.extract(query)
+            self._query_keyword_cache[normalized_query] = keyword
+
         cache_key = build_plan_cache_key(
             keyword,
             tools,
