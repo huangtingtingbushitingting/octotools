@@ -13,8 +13,8 @@ from octotools.models.memory import Memory
 class Planner:
     def __init__(self, llm_engine_name: str, toolbox_metadata: dict = None, available_tools: List = None, verbose: bool = False):
         self.llm_engine_name = llm_engine_name
-        self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, is_multimodal=True)#多模态大模型
-        self.llm_engine = create_llm_engine(model_string=llm_engine_name, is_multimodal=False)#单模态大模型
+        self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, is_multimodal=True, usage_component="planner_multimodal")#多模态大模型
+        self.llm_engine = create_llm_engine(model_string=llm_engine_name, is_multimodal=False, usage_component="planner")#单模态大模型
         self.toolbox_metadata = toolbox_metadata if toolbox_metadata is not None else {}
         self.available_tools = available_tools if available_tools is not None else []
         self.verbose = verbose
@@ -166,7 +166,7 @@ Tool Metadata:
 {self.toolbox_metadata}
 
 Previous Steps and Their Results:
-{memory.get_actions()}
+{memory.get_prompt_context()}
 
 Current Step: {step_count} in {max_step_count} steps
 Remaining Steps: {max_step_count - step_count}
@@ -247,7 +247,7 @@ Image: {image_info}
 Available Tools: {self.available_tools}
 Toolbox Metadata: {self.toolbox_metadata}
 Initial Analysis: {query_analysis}
-Memory (tools used and results): {memory.get_actions()}
+Memory (tools used and results): {memory.get_prompt_context()}
 
 Detailed Instructions:
 1. Carefully analyze the query, initial analysis, and image (if provided):
@@ -350,7 +350,7 @@ Context:
 Query: {question}
 Image: {image_info}
 Actions Taken:
-{memory.get_actions()}
+{memory.get_prompt_context()}
 
 Instructions:
 1. Review the query, image, and all actions taken during the process.
@@ -410,7 +410,7 @@ Image: {image_info}
 Initial Analysis:
 {self.query_analysis}
 Actions Taken:
-{memory.get_actions()}
+{memory.get_prompt_context()}
 
 Please generate the concise output based on the query, image information, initial analysis, and actions taken. Break down the process into clear, logical, and conherent steps. Conclude with a precise and direct answer to the query.
 

@@ -2,7 +2,7 @@ services:
   octotools:
     volumes:
       - type: bind
-        source: "D:\\agentic-plan-cache"
+        source: "${APC_SOURCE_DIR:-../agentic-plan-cache}"
         target: /workspace/agentic-plan-cache
 
     environment:

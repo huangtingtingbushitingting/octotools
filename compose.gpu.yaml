@@ -1,0 +1,46 @@
+services:
+  vllm:
+    image: "vllm/vllm-openai:${VLLM_IMAGE_TAG:-v0.8.5}"
+    container_name: octotools-vllm
+    ipc: host
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    environment:
+      HUGGING_FACE_HUB_TOKEN: "${HF_TOKEN:-}"
+    command:
+      - "--model"
+      - "${VLLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}"
+      - "--served-model-name"
+      - "${VLLM_SERVED_MODEL_NAME:-Qwen/Qwen2.5-7B-Instruct}"
+      - "--tensor-parallel-size"
+      - "${VLLM_TENSOR_PARALLEL_SIZE:-1}"
+      - "--gpu-memory-utilization"
+      - "${VLLM_GPU_MEMORY_UTILIZATION:-0.90}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 120s
+    restart: unless-stopped
+
+  octotools:
+    depends_on:
+      vllm:
+        condition: service_healthy
+    environment:
+      VLLM_BASE_URL: "http://vllm:8000/v1"
+      VLLM_API_KEY: "${VLLM_API_KEY:-dummy-token}"
+      OCTOTOOLS_MODEL: "vllm-${VLLM_SERVED_MODEL_NAME:-Qwen/Qwen2.5-7B-Instruct}"
+
+volumes:
+  huggingface-cache:

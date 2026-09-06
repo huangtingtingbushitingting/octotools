@@ -3,7 +3,13 @@
 __pycache__
 *.pyc
 .env
+.env.*
+!.env.template
+!.env.gpu.example
 notebooks/.env
 examples/notebooks/.env
 notebooks/solver_cache
+solver_cache
+experiment_runs
+.cache
 **/.ipynb_checkpoints

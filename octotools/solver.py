@@ -1,7 +1,7 @@
 import argparse
 import time
 import json
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from octotools.models.initializer import Initializer
 from octotools.models.planner import Planner
@@ -23,6 +23,7 @@ class Solver:
         verbose: bool = True,
         plan_cache_manager=None,
         plan_cache_mode: str = "off",
+        plan_cache_use_evidence: bool = True,
     ):
         self.planner = planner
         self.memory = memory
@@ -35,7 +36,7 @@ class Solver:
         assert all(output_type in ["base", "final", "direct"] for output_type in self.output_types), "Invalid output type. Supported types are 'base', 'final', 'direct'."
         #参数校验断言
         self.verbose = verbose
-        valid_plan_cache_modes = {"off", "shadow"}
+        valid_plan_cache_modes = {"assist", "off", "shadow"}
 
         if plan_cache_mode not in valid_plan_cache_modes:
             raise ValueError(
@@ -51,7 +52,13 @@ class Solver:
 
         self.plan_cache_manager = plan_cache_manager
         self.plan_cache_mode = plan_cache_mode
-    def solve(self, question: str, image_path: Optional[str] = None):#如果给出了image_path则在planner中会多一个get_image_info的动作
+        self.plan_cache_use_evidence = plan_cache_use_evidence
+    def solve(
+        self,
+        question: str,
+        image_path: Optional[str] = None,
+        shared_context: Optional[Mapping[str, Any]] = None,
+    ):#如果给出了image_path则在planner中会多一个get_image_info的动作
         """
         Solve a single problem from the benchmark dataset(基准数据集).
         
@@ -61,6 +68,7 @@ class Solver:
         # Each solve call must start with isolated query memory.
         self.memory.reset()
         self.memory.set_query(question)
+        self.memory.set_shared_context(shared_context)
         # Update cache directory for the executor
         self.executor.set_query_cache_dir(self.root_cache_dir)
 
@@ -91,58 +99,98 @@ class Solver:
             plan_cache_lookup = None
             plan_cache_info = None
 
-        if self.plan_cache_mode == "shadow":
-            plan_cache_info = {
-                "enabled": True,
-                "mode": "shadow",
-                "hit": False,
-                "keyword": None,
-                "cache_key": None,
-                "template_tools": [],
-                "template_stored": False,
-                "cache_size": self.plan_cache_manager.size,
-                "error": None,
-            }
-            json_data["plan_cache"] = plan_cache_info
+        if self.plan_cache_mode in {"assist", "off", "shadow"}:
+            if self.plan_cache_mode in {"assist", "shadow"}:
+                plan_cache_info = {
+                    "enabled": True,
+                    "mode": self.plan_cache_mode,
+                    "hit": False,
+                    "keyword": None,
+                    "cache_key": None,
+                    "template_tools": [],
+                    "template_stored": False,
+                    "cache_size": self.plan_cache_manager.size,
+                    "guidance_injected": False,
+                    "evidence_gate_enabled": self.plan_cache_use_evidence,
+                    "template_usable": None,
+                    "step_decisions": [],
+                    "error": None,
+                }
+                json_data["plan_cache"] = plan_cache_info
 
-            try:
-                plan_cache_lookup = self.plan_cache_manager.lookup(
-                    question,
-                    self.planner.available_tools,
-                    has_image=bool(image_path),
-                )
-
-                plan_cache_info["hit"] = plan_cache_lookup.hit
-                plan_cache_info["keyword"] = plan_cache_lookup.keyword
-                plan_cache_info["cache_key"] = (
-                    plan_cache_lookup.cache_key
-                )
-
-                if plan_cache_lookup.template is not None:
-                    plan_cache_info["template_tools"] = [
-                        step.tool_name
-                        for step in plan_cache_lookup.template.steps
-                    ]
-
-                if self.verbose:
-                    print(
-                        "\n==> APC Shadow Lookup:"
-                        f"\n[Hit]: {plan_cache_lookup.hit}"
-                        f"\n[Keyword]: {plan_cache_lookup.keyword}"
-                        f"\n[Cache Key]: {plan_cache_lookup.cache_key}"
+                try:
+                    plan_cache_lookup = self.plan_cache_manager.lookup(
+                        question,
+                        self.planner.available_tools,
+                        has_image=bool(image_path),
                     )
 
-            except Exception as error:
-                plan_cache_info["error"] = (
-                    "lookup failed: "
-                    f"{type(error).__name__}: {error}"
-                )
-
-                if self.verbose:
-                    print(
-                        "\n==> APC shadow lookup failed: "
-                        f"{error}"
+                    plan_cache_info["hit"] = plan_cache_lookup.hit
+                    plan_cache_info["keyword"] = plan_cache_lookup.keyword
+                    plan_cache_info["cache_key"] = (
+                        plan_cache_lookup.cache_key
                     )
+
+                    if plan_cache_lookup.template is not None:
+                        plan_cache_info["template_tools"] = [
+                            step.tool_name
+                            for step in plan_cache_lookup.template.steps
+                        ]
+
+                        if self.plan_cache_mode == "assist":
+                            from octotools.research.evidence_plan import (
+                                EvidencePlanGate,
+                                build_plan_guidance,
+                            )
+
+                            gate = EvidencePlanGate(
+                                self.planner.available_tools
+                            )
+                            shared_evidence = self.memory.get_prompt_context()[
+                                "shared_across_attempts"
+                            ]
+                            assessment = gate.assess(
+                                plan_cache_lookup.template,
+                                (
+                                    shared_evidence
+                                    if self.plan_cache_use_evidence
+                                    else {}
+                                ),
+                            )
+                            guidance = build_plan_guidance(
+                                plan_cache_lookup.template,
+                                assessment,
+                            )
+                            shared_evidence["plan_cache_guidance"] = guidance
+                            self.memory.set_shared_context(shared_evidence)
+                            plan_cache_info["guidance_injected"] = True
+                            plan_cache_info["template_usable"] = (
+                                assessment.usable
+                            )
+                            plan_cache_info["step_decisions"] = [
+                                decision.to_dict()
+                                for decision in assessment.decisions
+                            ]
+
+                    if self.verbose:
+                        print(
+                            f"\n==> APC {self.plan_cache_mode.title()} Lookup:"
+                            f"\n[Hit]: {plan_cache_lookup.hit}"
+                            f"\n[Keyword]: {plan_cache_lookup.keyword}"
+                            f"\n[Cache Key]: {plan_cache_lookup.cache_key}"
+                        )
+
+                except Exception as error:
+                    plan_cache_info["error"] = (
+                        "lookup failed: "
+                        f"{type(error).__name__}: {error}"
+                    )
+
+                    if self.verbose:
+                        print(
+                            "\n==> APC shadow lookup failed: "
+                            f"{error}"
+                        )
             # [1] Analyze query
             query_start_time = time.time()
             query_analysis = self.planner.analyze_query(question, image_path)
@@ -252,6 +300,7 @@ class Solver:
                 "memory": memory_actions,
                 "step_count": step_count,
                 "execution_time": round(time.time() - query_start_time, 2),
+                "conclusion": conclusion,
             })
 
             # Generate final output if requested
@@ -266,7 +315,7 @@ class Solver:
                 json_data["direct_output"] = direct_output
                 print(f"\n==> 🐙 Final Answer:\n\n{direct_output}")
             if (
-                self.plan_cache_mode == "shadow"
+                self.plan_cache_mode in {"assist", "shadow"}
                 and plan_cache_lookup is not None
                 and not plan_cache_lookup.hit
                 and conclusion == "STOP"
@@ -289,7 +338,7 @@ class Solver:
 
                     if self.verbose:
                         print(
-                            "\n==> APC Shadow Store:"
+                            f"\n==> APC {self.plan_cache_mode.title()} Store:"
                             f"\n[Stored]: "
                             f"{stored_template is not None}"
                             f"\n[Cache Size]: "
@@ -326,7 +375,9 @@ def construct_solver(
     plan_cache_mode: str = "shadow",
     cheap_llm_engine_name: str | None = None,
     plan_cache_path: str = "solver_cache/apc_plan_cache.json",
-    plan_cache_max_size: int = 128,):
+    plan_cache_max_size: int = 128,
+    plan_cache_use_evidence: bool = True,
+):
     
     # Instantiate Initializer
     initializer = Initializer(
@@ -359,9 +410,9 @@ def construct_solver(
     if enable_plan_cache:
         from octotools.plan_cache.llm_adapter import OctoToolsLLMProvider
         from octotools.plan_cache.manager import PlanCacheManager
-        if plan_cache_mode != "shadow":
+        if plan_cache_mode not in {"assist", "shadow"}:
             raise ValueError(
-                "Only 'shadow' plan cache mode is currently supported."
+                "Plan cache mode must be 'shadow' or 'assist'."
             )
 
         cache_model_name = cheap_llm_engine_name or llm_engine_name
@@ -391,6 +442,7 @@ def construct_solver(
         verbose=verbose,
         plan_cache_manager=plan_cache_manager,
         plan_cache_mode=effective_plan_cache_mode,
+        plan_cache_use_evidence=plan_cache_use_evidence,
     )
     return solver
 

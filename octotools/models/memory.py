@@ -1,4 +1,5 @@
-from typing import Dict, Any, List, Union, Optional
+from copy import deepcopy
+from typing import Dict, Any, List, Union, Optional, Mapping
 import os
 
 class Memory:
@@ -7,6 +8,7 @@ class Memory:
         self.query: Optional[str] = None
         self.files: List[Dict[str, str]] = []
         self.actions: Dict[str, Dict[str, Any]] = {}
+        self.shared_context: Dict[str, Any] = {}
         self._init_file_types()
 
     def set_query(self, query: str) -> None:
@@ -80,8 +82,24 @@ class Memory:
     
     def get_actions(self) -> Dict[str, Dict[str, Any]]:
         return self.actions
+
+    def set_shared_context(
+        self,
+        context: Optional[Mapping[str, Any]],
+    ) -> None:
+        """Attach evidence from earlier attempts to the current attempt."""
+        self.shared_context = deepcopy(dict(context or {}))
+
+    def get_prompt_context(self) -> Dict[str, Any]:
+        """Keep prior evidence separate from current-attempt actions."""
+        return {
+            "shared_across_attempts": deepcopy(self.shared_context),
+            "current_attempt_actions": deepcopy(self.actions),
+        }
+
     def reset(self) -> None:
         """Clear all query-specific state before solving a new query."""
         self.query = None
         self.files.clear()
         self.actions.clear()
+        self.shared_context.clear()

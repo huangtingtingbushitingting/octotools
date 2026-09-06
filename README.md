@@ -7,6 +7,12 @@
 
 # OctoTools: An Agentic Framework with Extensible Tools for Complex Reasoning
 
+> This fork adds Agentic Plan Caching (APC), evidence-aware plan reuse,
+> budgeted multi-attempt inference, component-level usage logging, and a
+> reproducible two-container GPU deployment. See
+> [GPU server setup](docs/GPU_SERVER_SETUP.md) and
+> [the thesis research plan](docs/thesis_research_plan.md).
+
 
 <!--- BADGES: START --->
 [![GitHub license](https://img.shields.io/badge/License-MIT-green.svg?logo=github)](https://lbesson.mit-license.org/)

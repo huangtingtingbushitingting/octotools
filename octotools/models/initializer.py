@@ -21,8 +21,13 @@ class Initializer:
         print(f"LLM engine name: {self.model_string}")
         self._set_up_tools()
 
-        # if vllm, set up the vllm server
-        if model_string.startswith("vllm-"):
+        # By default a vLLM model is an external OpenAI-compatible service.
+        # Opt in to launching a local process only for non-container workflows.
+        if (
+            model_string
+            and model_string.startswith("vllm-")
+            and os.getenv("VLLM_AUTOSTART", "0") == "1"
+        ):
             self.setup_vllm_server()
 
     def get_project_root(self):#动态地向上递归查找文件系统的父目录，直到找到包含octotools子文件夹的路径
@@ -183,9 +188,10 @@ class Initializer:
             raise ValueError(f"VLLM config path does not exist: {self.vllm_config_path}")
             
         # Start the VLLM server
-        command = ["vllm", "serve", self.model_string.replace("vllm-", ""), "--port", "8888"]
+        port = os.getenv("VLLM_PORT", "8000")
+        command = ["vllm", "serve", self.model_string.replace("vllm-", ""), "--port", port]
         if self.vllm_config_path is not None:
-            command = ["vllm", "serve", "--config", self.vllm_config_path, "--port", "8888"]
+            command = ["vllm", "serve", "--config", self.vllm_config_path, "--port", port]
 
         import subprocess#启动本地服务的模型进程
         vllm_process = subprocess.Popen(
@@ -224,4 +230,3 @@ if __name__ == "__main__":
 
     print("\nToolbox metadata for available tools:")
     print(initializer.toolbox_metadata)
-    

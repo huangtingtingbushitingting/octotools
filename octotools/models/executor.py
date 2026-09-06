@@ -138,7 +138,11 @@ Reason: The command should process multiple items in a single execution, not sep
 
 Remember: Your response MUST end with the Generated Command, which should be valid Python code including any necessary data preparation steps and one or more `execution = tool.execute(` calls, without any additional explanatory text. The format `execution = tool.execute` must be strictly followed, and the last line must begin with `execution = tool.execute` to capture the final output."""
 
-        llm_generate_tool_command = create_llm_engine(model_string=self.llm_engine_name, is_multimodal=False)
+        llm_generate_tool_command = create_llm_engine(
+            model_string=self.llm_engine_name,
+            is_multimodal=False,
+            usage_component="executor_command",
+        )
         tool_command = llm_generate_tool_command(prompt_generate_tool_command, response_format=ToolCommand)
         # 由大模型按照prompt_generate_tool_command生成调用工具的代码和工具执行的代码和工具执行的具体参数
         """ToolCommand规定输出的结构

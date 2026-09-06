@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from apc.models import PlanTemplate, TemplateStep
 from octotools.models.memory import Memory
 from octotools.solver import Solver
 
@@ -10,6 +11,7 @@ class FakePlanner:
 
     def __init__(self, conclusion: str = "STOP") -> None:
         self.conclusion = conclusion
+        self.seen_prompt_context = None
 
     def analyze_query(self, question, image):
         return "Use a calculator"
@@ -23,6 +25,7 @@ class FakePlanner:
         step_count,
         max_steps,
     ):
+        self.seen_prompt_context = memory.get_prompt_context()
         return "fake next step"
 
     def extract_context_subgoal_and_tool(self, response):
@@ -98,10 +101,16 @@ class FakeCacheManager:
 
         template = None
         if self.hit:
-            template = SimpleNamespace(
+            template = PlanTemplate(
+                source_query=query,
+                category="arithmetic",
                 steps=[
-                    SimpleNamespace(tool_name="Calculator"),
-                ]
+                    TemplateStep(
+                        index=1,
+                        description="Add the numbers",
+                        tool_name="Calculator",
+                    ),
+                ],
             )
 
         return SimpleNamespace(
@@ -147,6 +156,95 @@ def make_solver(
         plan_cache_manager=manager,
         plan_cache_mode="shadow",
     )
+
+
+def make_solver_without_cache() -> Solver:
+    return Solver(
+        planner=FakePlanner(conclusion="STOP"),
+        memory=Memory(),
+        executor=FakeExecutor(),
+        output_types="direct",
+        max_steps=1,
+        verbose=False,
+        plan_cache_mode="off",
+    )
+
+
+def test_cache_off_still_runs_original_solver():
+    result = make_solver_without_cache().solve("What is 12 plus 12?")
+
+    assert result["direct_output"] == "24"
+    assert result["conclusion"] == "STOP"
+    assert "plan_cache" not in result
+
+
+def test_assist_hit_injects_advisory_plan_guidance():
+    manager = FakeCacheManager(hit=True)
+    planner = FakePlanner(conclusion="STOP")
+    solver = Solver(
+        planner=planner,
+        memory=Memory(),
+        executor=FakeExecutor(),
+        output_types="direct",
+        max_steps=1,
+        verbose=False,
+        plan_cache_manager=manager,
+        plan_cache_mode="assist",
+    )
+
+    result = solver.solve("What is 12 plus 12?")
+
+    guidance = planner.seen_prompt_context["shared_across_attempts"][
+        "plan_cache_guidance"
+    ]
+    assert result["plan_cache"]["guidance_injected"] is True
+    assert result["plan_cache"]["step_decisions"][0]["action"] == "REUSE"
+    assert guidance["steps"][0]["tool_name"] == "Calculator"
+
+
+def test_assist_evidence_gate_can_be_ablated():
+    shared_context = {
+        "observations": [
+            {
+                "evidence_id": "attempt-1:Action Step 1",
+                "tool_name": "Calculator",
+                "sub_goal": "Add the numbers",
+                "result": {"value": 24},
+            }
+        ]
+    }
+
+    gated_solver = Solver(
+        planner=FakePlanner(conclusion="STOP"),
+        memory=Memory(),
+        executor=FakeExecutor(),
+        output_types="direct",
+        max_steps=1,
+        verbose=False,
+        plan_cache_manager=FakeCacheManager(hit=True),
+        plan_cache_mode="assist",
+        plan_cache_use_evidence=True,
+    )
+    ungated_solver = Solver(
+        planner=FakePlanner(conclusion="STOP"),
+        memory=Memory(),
+        executor=FakeExecutor(),
+        output_types="direct",
+        max_steps=1,
+        verbose=False,
+        plan_cache_manager=FakeCacheManager(hit=True),
+        plan_cache_mode="assist",
+        plan_cache_use_evidence=False,
+    )
+
+    gated = gated_solver.solve("What is 12 plus 12?", shared_context=shared_context)
+    ungated = ungated_solver.solve(
+        "What is 12 plus 12?",
+        shared_context=shared_context,
+    )
+
+    assert gated["plan_cache"]["step_decisions"][0]["action"] == "SKIP"
+    assert ungated["plan_cache"]["step_decisions"][0]["action"] == "REUSE"
 
 
 def test_cache_miss_stores_successful_trace():

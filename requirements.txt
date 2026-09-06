@@ -15,6 +15,8 @@ sympy==1.13.1
 tenacity==9.0.0
 wikipedia==1.4.0
 exa-py>=2.0.0
-vllm==0.8.5
+# vLLM runs as a separate GPU service in compose.gpu.yaml.  Install
+# requirements-gpu.txt only when launching vLLM in this Python environment.
+agentic-plan-cache @ git+https://github.com/amangupta25/agentic-plan-cache.git@d3fa59b59c5827389927e492b5f3a5d81b5b9965
 # litellm==2.1.1
 # ollama==0.5.1

@@ -9,12 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md requirements.txt ./
 COPY octotools ./octotools
 
-RUN grep -vE '^(vllm|#|$)' requirements.txt > /tmp/requirements-docker.txt \
-    && pip install --upgrade pip \
-    && pip install -r /tmp/requirements-docker.txt \
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
     && pip install --no-deps -e . \
-    && pip install jupyterlab ipykernel
+    && pip install jupyterlab ipykernel "pytest>=8,<10"
 
 EXPOSE 8888
 
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=octotools"]
+CMD ["sh", "-c", "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.token=\"${JUPYTER_TOKEN:-octotools}\""]

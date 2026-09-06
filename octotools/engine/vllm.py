@@ -1,11 +1,6 @@
 # Reference: https://github.com/zou-group/textgrad/blob/main/textgrad/engine/openai.py
 
 try:
-    import vllm
-except ImportError:
-    raise ImportError("If you'd like to use VLLM models, please install the vllm package by running `pip install vllm`.")
-
-try:
     from openai import OpenAI
 except ImportError:
     raise ImportError("If you'd like to use VLLM models, please install the openai package by running `pip install openai`.")
@@ -46,17 +41,31 @@ class ChatVLLM(EngineLM, CachedEngine):
             os.makedirs(self.image_cache_dir, exist_ok=True)
             super().__init__(cache_path=cache_path)
         
-        try:
-            self.client = OpenAI(
-                base_url="http://localhost:8888/v1",#请求发送到本机VLLM端口
-                api_key="dummy-token",#VLLM 是本地开源服务，默认不校验身份。这里填任何字符串
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to connect to VLLM server. Please ensure the server is running and try again. Please ensure that the model is running at localhost:8888.")
-            #查看本地部署的模型框架与实际的是否符合
-        if self.client.models.list().data[0].id != self.model_string:
-            #client.models.list()返回当前运行的所有模型的列表
-            raise ValueError(f"The VLLM server is running, but the model {self.model_string} is not available. Please check the model name and try again.")
+        self.base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
+        self.client = OpenAI(
+            base_url=self.base_url,
+            api_key=os.getenv("VLLM_API_KEY", "dummy-token"),
+        )
+
+        # Some OpenAI-compatible gateways do not expose GET /models.  The
+        # check is enabled by default for vLLM and can be disabled explicitly.
+        if os.getenv("VLLM_SKIP_MODEL_CHECK", "0") != "1":
+            try:
+                available_models = {
+                    model.id for model in self.client.models.list().data
+                }
+            except Exception as error:
+                raise ValueError(
+                    "Could not reach the vLLM OpenAI endpoint at "
+                    f"{self.base_url}. Start the server or set "
+                    "VLLM_BASE_URL/VLLM_SKIP_MODEL_CHECK."
+                ) from error
+            if self.model_string not in available_models:
+                raise ValueError(
+                    f"Model {self.model_string!r} is not served by "
+                    f"{self.base_url}. Available models: "
+                    f"{sorted(available_models)}"
+                )
 
 
     def generate(self, content: Union[str, List[Union[str, bytes]]], system_prompt=None, **kwargs):

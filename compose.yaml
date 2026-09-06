@@ -6,10 +6,12 @@ services:
     container_name: octotools
     working_dir: /workspace/octotools
     ports:
-      - "8888:8888"
+      - "${JUPYTER_PORT:-8888}:8888"
     volumes:
       - type: bind
-        source: "D:\\octotools"
+        source: .
         target: /workspace/octotools
     env_file:
       - .env
+    environment:
+      JUPYTER_TOKEN: "${JUPYTER_TOKEN:-octotools}"

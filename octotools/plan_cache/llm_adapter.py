@@ -20,6 +20,7 @@ class OctoToolsLLMProvider(LLMProvider):
             model_string=model_string,
             is_multimodal=is_multimodal,
             use_cache=False,
+            usage_component="plan_cache",
         )
 
     @property
