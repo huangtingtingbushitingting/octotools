@@ -41,10 +41,17 @@ chmod 600 .env .env.gpu
 - `VLLM_MODEL` 是 Hugging Face 模型名或服务器上的模型目录。
 - `VLLM_SERVED_MODEL_NAME` 是 OctoTools 请求时使用的名字，通常与模型名一致。
 - 多张 GPU 时，把 `VLLM_TENSOR_PARALLEL_SIZE` 改为实际使用的 GPU 数。
+- `VLLM_MAX_MODEL_LEN=8192` 限制初始上下文长度，避免 32B 模型的 KV Cache
+  过度占用显存；只有实验确实需要时再提高。
 - 私有或受限模型才需要 `HF_TOKEN`。
 - 必须修改 `JUPYTER_TOKEN`。
 
 原因：`.env` 和 `.env.gpu` 已被 Git 忽略，密钥与服务器差异不会进入论文代码仓库。
+
+默认模型为 `Qwen/Qwen2.5-32B-Instruct`。官方 BF16 模型文件约 65.5 GB，
+还需要 KV Cache 和运行时显存，因此 48 GB 单卡通常无法直接运行完整 BF16 权重。
+可使用 80 GB 级单卡、两张 GPU 并把张量并行设为 2，或将 `VLLM_MODEL`
+改为你服务器上的 32B 量化模型路径。最终配置以服务器实际显存和模型格式为准。
 
 ## 4. 启动 GPU 服务
 
@@ -81,7 +88,7 @@ docker exec octotools python -c \
 ```bash
 docker exec octotools python -m octotools.research.experiment \
   --group C1 \
-  --model "vllm-Qwen/Qwen2.5-7B-Instruct" \
+  --model "vllm-Qwen/Qwen2.5-32B-Instruct" \
   --tools generalist_solution_generator \
   --query "What is 12 plus 12?" \
   --expected-answer "24" \
@@ -102,7 +109,7 @@ docker exec octotools python -m octotools.research.experiment \
 for group in B0 B1 M1 M2 P0 P1 C1; do
   docker exec octotools python -m octotools.research.experiment \
     --group "$group" \
-    --model "vllm-Qwen/Qwen2.5-7B-Instruct" \
+    --model "vllm-Qwen/Qwen2.5-32B-Instruct" \
     --tools generalist_solution_generator \
     --query "What is 12 plus 12?" \
     --expected-answer "24" \
