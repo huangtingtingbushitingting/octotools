@@ -3,12 +3,12 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "octotoolkit"
-version = "0.3.6"
+name = "octoverilog"
+version = "0.1.0"
 authors = [
   { name="Pan Lu", email="lupantech@gmail.com" },
 ]
-description = "An effective and easy-to-use agentic framework with extendable tools for complex reasoning."
+description = "An OctoTools-based workflow for generating and verifying Verilog/SystemVerilog."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
@@ -28,11 +28,11 @@ include = ["octotools*"]
 dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
-Homepage = "https://octotools.github.io"
-Arxiv = "https://arxiv.org/pdf/2502.11271"
-Demo = "https://huggingface.co/spaces/OctoTools/octotools"
-Github = "https://github.com/octotools/octotools"
-Issues = "https://github.com/octotools/octotools/issues"
+OctoTools = "https://github.com/octotools/octotools"
+CodeV-R1 = "https://github.com/haoxufeng/CodeV-R1"
+
+[project.scripts]
+octoverilog = "octotools.verilog.cli:main"
 
 [project.optional-dependencies]
 dev = [

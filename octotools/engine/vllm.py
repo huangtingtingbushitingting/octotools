@@ -1,14 +1,9 @@
 # Reference: https://github.com/zou-group/textgrad/blob/main/textgrad/engine/openai.py
 
 try:
-    import vllm
-except ImportError:
-    raise ImportError("If you'd like to use VLLM models, please install the vllm package by running `pip install vllm`.")
-
-try:
     from openai import OpenAI
 except ImportError:
-    raise ImportError("If you'd like to use VLLM models, please install the openai package by running `pip install openai`.")
+    raise ImportError("Install the openai package to connect to a vLLM server.")
 
 import os
 import json
@@ -48,15 +43,11 @@ class ChatVLLM(EngineLM, CachedEngine):
         
         try:
             self.client = OpenAI(
-                base_url="http://localhost:8888/v1",#请求发送到本机VLLM端口
-                api_key="dummy-token",#VLLM 是本地开源服务，默认不校验身份。这里填任何字符串
+                base_url=os.environ.get("VLLM_BASE_URL", "http://localhost:8888/v1"),
+                api_key=os.environ.get("VLLM_API_KEY", "dummy-token"),
             )
         except Exception as e:
-            raise ValueError(f"Failed to connect to VLLM server. Please ensure the server is running and try again. Please ensure that the model is running at localhost:8888.")
-            #查看本地部署的模型框架与实际的是否符合
-        if self.client.models.list().data[0].id != self.model_string:
-            #client.models.list()返回当前运行的所有模型的列表
-            raise ValueError(f"The VLLM server is running, but the model {self.model_string} is not available. Please check the model name and try again.")
+            raise ValueError("Failed to configure the vLLM OpenAI-compatible client.") from e
 
 
     def generate(self, content: Union[str, List[Union[str, bytes]]], system_prompt=None, **kwargs):
