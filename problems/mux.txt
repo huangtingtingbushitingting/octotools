@@ -1,0 +1,11 @@
+Create a synthesizable Verilog module named TopModule.
+
+Interface:
+- input wire a
+- input wire b
+- input wire sel
+- output wire y
+
+When sel is 0, y must equal a.
+When sel is 1, y must equal b.
+Return the complete TopModule definition.
