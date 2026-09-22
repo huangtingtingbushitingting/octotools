@@ -1,9 +1,8 @@
 import importlib
-import json
 import os
 import re
 import signal
-from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from octotools.engine.factory import create_llm_engine
@@ -20,21 +19,53 @@ def timeout_handler(signum, frame):
     raise TimeoutError("Function execution timed out")
 
 class Executor:
-    def __init__(self, llm_engine_name: str, root_cache_dir: str = "solver_cache",  num_threads: int = 1, max_time: int = 120, max_output_length: int = 100000, verbose: bool = False):
+    def __init__(self, llm_engine_name: str, workspace_dir: str = "runs/agent-work",  num_threads: int = 1, max_time: int = 120, max_output_length: int = 100000, verbose: bool = False):
         self.llm_engine_name = llm_engine_name#部分工具需要llm
-        self.root_cache_dir = root_cache_dir
+        self.workspace_dir = str(Path(workspace_dir).resolve())
+        Path(self.workspace_dir).mkdir(parents=True, exist_ok=True)
+        self._tool_instances = {}
         self.num_threads = num_threads
         self.max_time = max_time
         self.max_output_length = max_output_length
         self.verbose = verbose
 
-    def set_query_cache_dir(self, query_cache_dir):#利用对象属性与当地时间拼接成一个本地地址
-        if query_cache_dir:
-            self.query_cache_dir = query_cache_dir
+    def set_workspace_dir(self, workspace_dir: str) -> None:
+        """Set the per-run artifact directory."""
+        self.workspace_dir = str(Path(workspace_dir).resolve())
+        Path(self.workspace_dir).mkdir(parents=True, exist_ok=True)
+        for tool in self._tool_instances.values():
+            tool.set_custom_output_dir(self.workspace_dir)
+
+    @staticmethod
+    def _tool_module_name(tool_name: str) -> str:
+        base = re.sub(r"(?i)_?tool$", "", tool_name)
+        if "_" not in base:
+            base = re.sub(r"(?<!^)(?=[A-Z])", "_", base)
+        return f"octotools.tools.{base.lower()}.tool"
+
+    def _load_tool(self, tool_name: str):
+        if tool_name in self._tool_instances:
+            return self._tool_instances[tool_name]
+        module = importlib.import_module(self._tool_module_name(tool_name))
+        tool_class = getattr(module, tool_name)
+        if getattr(tool_class, "require_llm_engine", False):
+            tool = tool_class(model_string=self.llm_engine_name)
         else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")#获取当地时间
-            self.query_cache_dir = os.path.join(self.root_cache_dir, timestamp)
-        os.makedirs(self.query_cache_dir, exist_ok=True)
+            tool = tool_class()
+        tool.set_custom_output_dir(self.workspace_dir)
+        self._tool_instances[tool_name] = tool
+        return tool
+
+    def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
+        """Invoke a registered tool directly without model-generated Python/eval."""
+        try:
+            return self._load_tool(tool_name).execute(**kwargs)
+        except Exception as error:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "error": f"{type(error).__name__}: {error}",
+            }
 
     def generate_tool_command(self, question: str, image: str, context: str, sub_goal: str, tool_name: str, tool_metadata: Dict[str, Any]) -> Any:
         prompt_generate_tool_command = f"""
@@ -138,7 +169,7 @@ Reason: The command should process multiple items in a single execution, not sep
 
 Remember: Your response MUST end with the Generated Command, which should be valid Python code including any necessary data preparation steps and one or more `execution = tool.execute(` calls, without any additional explanatory text. The format `execution = tool.execute` must be strictly followed, and the last line must begin with `execution = tool.execute` to capture the final output."""
 
-        llm_generate_tool_command = create_llm_engine(model_string=self.llm_engine_name, is_multimodal=False)
+        llm_generate_tool_command = create_llm_engine(model_string=self.llm_engine_name, use_cache=False, is_multimodal=False)
         tool_command = llm_generate_tool_command(prompt_generate_tool_command, response_format=ToolCommand)
         # 由大模型按照prompt_generate_tool_command生成调用工具的代码和工具执行的代码和工具执行的具体参数
         """ToolCommand规定输出的结构
@@ -226,27 +257,10 @@ Remember: Your response MUST end with the Generated Command, which should be val
                 signal.alarm(0)  # Ensure alarm is disabled even if other exceptions occur
 
         # Import the tool module and instantiate it
-        module_name = f"tools.{tool_name.lower().replace('_tool', '')}.tool"#module_name存放具体工具的地址
+        module_name = self._tool_module_name(tool_name)#module_name存放具体工具的地址
 
         try:
-            # Dynamically import the module
-            module = importlib.import_module(module_name)
-
-            # Get the tool class
-            tool_class = getattr(module, tool_name)
-
-            # Check if the tool requires an LLM engine
-            # NOTE may need to refine base.py and tool.py to handle this better
-            if getattr(tool_class, 'require_llm_engine', False):#检查具体的工具是否需要Vllm
-                # Instantiate the tool with the model_string
-                tool = tool_class(model_string=self.llm_engine_name)
-            else:
-                # Instantiate the tool without model_string for tools that don't require it
-                tool = tool_class()
-
-            # Set the custom output directory
-            # NOTE: May have a better way to handle this
-            tool.set_custom_output_dir(self.query_cache_dir)#query_cache_di由query属性与当地时间构成，custom_output_dir=query_cache_dir
+            tool = self._load_tool(tool_name)
 
             # Split the command into blocks, execute each one and store execution results
             command_blocks = split_commands(command)

@@ -10,7 +10,7 @@ from octotools.engine.factory import create_llm_engine
 
 
 def extract_verilog(response: str) -> str:
-    """Extract the last complete Verilog module from common model formats."""
+    """Extract complete Verilog modules from common and malformed formats."""
     if not isinstance(response, str) or not response.strip():
         raise ValueError("model returned an empty response")
 
@@ -19,17 +19,37 @@ def extract_verilog(response: str) -> str:
         response,
         flags=re.IGNORECASE | re.DOTALL,
     )
-    candidates = fenced or re.findall(
+    marked = re.findall(
         r"\[BEGIN\]\s*(.*?)\s*\[(?:DONE|END)\]",
         response,
         flags=re.IGNORECASE | re.DOTALL,
     )
-    source = candidates[-1].strip() if candidates else response.strip()
-    modules = list(re.finditer(r"\bmodule\b", source, re.IGNORECASE))
-    ends = list(re.finditer(r"\bendmodule\b", source, re.IGNORECASE))
-    if not modules or not ends or ends[-1].end() <= modules[0].start():
-        raise ValueError("model response does not contain a complete Verilog module")
-    return source[modules[0].start() : ends[-1].end()].strip()
+
+    candidates = [*reversed(fenced), *reversed(marked), response]
+    for candidate in candidates:
+        source = re.sub(
+            r"(?m)^[ \t]*```[^\r\n]*\r?\n?",
+            "",
+            candidate,
+        ).strip()
+        modules = list(
+            re.finditer(
+                r"\bmodule\s+(?:automatic\s+)?[A-Za-z_][A-Za-z0-9_$]*",
+                source,
+                flags=re.IGNORECASE,
+            )
+        )
+        ends = list(
+            re.finditer(
+                r"\bendmodule\b",
+                source,
+                flags=re.IGNORECASE,
+            )
+        )
+        if modules and ends and ends[-1].end() > modules[0].start():
+            return source[modules[0].start() : ends[-1].end()].strip()
+
+    raise ValueError("model response does not contain a complete Verilog module")
 
 
 class VerilogGenerator:
@@ -59,10 +79,15 @@ class VerilogGenerator:
         specification: str,
         feedback: str | None = None,
         *,
+        top_module: str = "TopModule",
         temperature: float = 0.2,
         max_tokens: int = 4096,
     ) -> tuple[str, str]:
-        prompt = f"{self.SYSTEM_PROMPT}\n\nSpecification:\n{specification.strip()}"
+        prompt = (
+            f"{self.SYSTEM_PROMPT}\n\n"
+            f"Required top module: {top_module}\n\n"
+            f"Specification:\n{specification.strip()}"
+        )
         if feedback:
             prompt += (
                 "\n\nThe previous candidate failed deterministic verification. "

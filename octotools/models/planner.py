@@ -3,7 +3,10 @@ import os
 import re
 from typing import Any, Dict, List, Tuple
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:  # Text-only agents do not require Pillow.
+    Image = None
 
 from octotools.engine.factory import create_llm_engine
 from octotools.models.formatters import MemoryVerification, NextStep, QueryAnalysis
@@ -13,8 +16,8 @@ from octotools.models.memory import Memory
 class Planner:
     def __init__(self, llm_engine_name: str, toolbox_metadata: dict = None, available_tools: List = None, verbose: bool = False):
         self.llm_engine_name = llm_engine_name
-        self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, is_multimodal=True)#多模态大模型
-        self.llm_engine = create_llm_engine(model_string=llm_engine_name, is_multimodal=False)#单模态大模型
+        self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, use_cache=False, is_multimodal=True)#多模态大模型
+        self.llm_engine = create_llm_engine(model_string=llm_engine_name, use_cache=False, is_multimodal=False)#单模态大模型
         self.toolbox_metadata = toolbox_metadata if toolbox_metadata is not None else {}
         self.available_tools = available_tools if available_tools is not None else []
         self.verbose = verbose
@@ -23,6 +26,8 @@ class Planner:
         if image_path and os.path.isfile(image_path):#判断是否给了文件路径以及指定路径下是否存在文件
             image_info["image_path"] = image_path
             try:
+                if Image is None:
+                    return image_info
                 with Image.open(image_path) as img:
                     width, height = img.size
                 image_info.update({

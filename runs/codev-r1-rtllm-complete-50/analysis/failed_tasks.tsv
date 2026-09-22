@@ -1,0 +1,9 @@
+task_id	category	attempts	compile	simulation	functional	output
+Arithmetic__Adder__adder_32bit	compile_failed	3	False	None	False	/home/htt/OctoVerilog/runs/codev-r1-rtllm-all-20260917-131817/Arithmetic__Adder__adder_32bit.sv
+Arithmetic__Adder__adder_pipe_64bit	compile_failed	3	False	None	False	/home/htt/OctoVerilog/runs/codev-r1-rtllm-all-20260917-131817/Arithmetic__Adder__adder_pipe_64bit.sv
+Arithmetic__Multiplier__multi_pipe_4bit	compile_failed	3	False	None	False	/home/htt/OctoVerilog/runs/codev-r1-rtllm-all-20260917-131817/Arithmetic__Multiplier__multi_pipe_4bit.sv
+Arithmetic__Other__float_multi	generation_failed	3	None	None	None	/home/htt/OctoVerilog/runs/codev-r1-rtllm-resume-20260917-141527/Arithmetic__Other__float_multi.sv
+Control__Counter__ring_counter	compile_failed	3	False	None	False	/home/htt/OctoVerilog/runs/codev-r1-rtllm-resume-20260917-141527/Control__Counter__ring_counter.sv
+Memory__FIFO__asyn_fifo	generation_failed	3	None	None	None	/home/htt/OctoVerilog/runs/codev-r1-rtllm-final25-20260917-144748/Memory__FIFO__asyn_fifo.sv
+Miscellaneous__Frequency divider__freq_divbyeven	compile_failed	3	False	None	False	/home/htt/OctoVerilog/runs/codev-r1-rtllm-final25-20260917-144748/Miscellaneous__Frequency_divider__freq_divbyeven.sv
+Miscellaneous__RISC-V__alu	generation_failed	3	None	None	None	/home/htt/OctoVerilog/runs/codev-r1-rtllm-final25-20260917-144748/Miscellaneous__RISC-V__alu.sv

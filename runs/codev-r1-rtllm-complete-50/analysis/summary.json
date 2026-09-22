@@ -1,0 +1,12 @@
+{
+  "total": 50,
+  "generated": 47,
+  "generation_failed": 3,
+  "compile_passed": 42,
+  "compile_failed": 8,
+  "functional_passed": 42,
+  "functional_failed": 0,
+  "verified": 42,
+  "failed": 8,
+  "pass_rate": 0.84
+}

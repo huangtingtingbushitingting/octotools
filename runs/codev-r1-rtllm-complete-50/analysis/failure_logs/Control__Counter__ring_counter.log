@@ -1,0 +1,2 @@
+/tmp/octoverilog-grr7vlxq/testbench.sv:20: internal error: I don't know how to elaborate(ivl_type_t) this expression: {8'd1, 8'd1, 8'd2, 8'd4, 8'd8, 8'd16, 8'd32, 8'd64, 8'd128, 8'd1}
+Elaboration failed

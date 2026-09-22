@@ -13,6 +13,16 @@ def test_rejects_incomplete_response():
         extract_verilog("always_comb begin x = y; end")
 
 
+def test_extracts_code_when_model_inserts_nested_fence_marker():
+    response = (
+        "```verilog\nmodule TopModule;\n"
+        "```vbnet\nlogic value;\n"
+        "endmodule\n```"
+    )
+    assert extract_verilog(response).startswith("module TopModule")
+    assert extract_verilog(response).endswith("endmodule")
+
+
 def test_generator_includes_verifier_feedback():
     prompts = []
 

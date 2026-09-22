@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/htt/OctoVerilog/octotools/verilog/cli.py", line 100, in <module>
+    raise SystemExit(main())
+  File "/home/htt/OctoVerilog/octotools/verilog/cli.py", line 84, in main
+    result = pipeline.run(
+  File "/home/htt/OctoVerilog/octotools/verilog/pipeline.py", line 59, in run
+    code, raw = self.generator.generate(
+  File "/home/htt/OctoVerilog/octotools/verilog/generator.py", line 106, in generate
+    raw = str(self.engine(prompt, **kwargs))
+  File "/home/htt/OctoVerilog/octotools/engine/vllm.py", line 97, in __call__
+    return self.generate(prompt, **kwargs)
+  File "/home/htt/OctoVerilog/octotools/engine/vllm.py", line 55, in generate
+    return self._generate_text(content, system_prompt=system_prompt, **kwargs)
+  File "/home/htt/OctoVerilog/octotools/engine/vllm.py", line 77, in _generate_text
+    response = self.client.chat.completions.create(
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/home/htt/.conda/envs/octoverilog-client/lib/python3.10/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.BadRequestError: Error code: 400 - {'object': 'error', 'message': "This model's maximum context length is 2048 tokens. However, you requested 2519 tokens (1495 in the messages, 1024 in the completion). Please reduce the length of the messages or completion.", 'type': 'BadRequestError', 'param': None, 'code': 400}

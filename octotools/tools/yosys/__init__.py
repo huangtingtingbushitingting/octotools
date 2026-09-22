@@ -1,0 +1,1 @@
+"""Yosys synthesis tool."""

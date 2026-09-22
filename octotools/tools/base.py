@@ -1,8 +1,4 @@
 # octotools/tools/base.py
-from distutils.util import execute
-
-from octotools.engine.openai import ChatOpenAI
-
 class BaseTool:
     """
     A base class for building tool classes that perform specific tasks, such as image processing or text detection.

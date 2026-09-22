@@ -80,4 +80,20 @@ class Memory:
     
     def get_actions(self) -> Dict[str, Dict[str, Any]]:
         return self.actions
-    
+
+    def clear(self) -> None:
+        """Start a new query without retaining evidence from the previous one."""
+        self.query = None
+        self.files = []
+        self.actions = {}
+
+    def add_evidence(
+        self,
+        step_count: int,
+        tool_name: str,
+        sub_goal: str,
+        result: Any,
+        command: str = "deterministic tool invocation",
+    ) -> None:
+        """Record deterministic tool evidence in the normal Agent memory format."""
+        self.add_action(step_count, tool_name, sub_goal, command, result)

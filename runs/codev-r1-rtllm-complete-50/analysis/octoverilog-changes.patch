@@ -1,0 +1,91 @@
+diff --git a/octotools/verilog/generator.py b/octotools/verilog/generator.py
+index 1e400ea..7ccf3ef 100644
+--- a/octotools/verilog/generator.py
++++ b/octotools/verilog/generator.py
+@@ -10,7 +10,7 @@ from octotools.engine.factory import create_llm_engine
+ 
+ 
+ def extract_verilog(response: str) -> str:
+-    """Extract the last complete Verilog module from common model formats."""
++    """Extract complete Verilog modules from common and malformed formats."""
+     if not isinstance(response, str) or not response.strip():
+         raise ValueError("model returned an empty response")
+ 
+@@ -19,17 +19,48 @@ def extract_verilog(response: str) -> str:
+         response,
+         flags=re.IGNORECASE | re.DOTALL,
+     )
+-    candidates = fenced or re.findall(
++    marked = re.findall(
+         r"\[BEGIN\]\s*(.*?)\s*\[(?:DONE|END)\]",
+         response,
+         flags=re.IGNORECASE | re.DOTALL,
+     )
+-    source = candidates[-1].strip() if candidates else response.strip()
+-    modules = list(re.finditer(r"\bmodule\b", source, re.IGNORECASE))
+-    ends = list(re.finditer(r"\bendmodule\b", source, re.IGNORECASE))
+-    if not modules or not ends or ends[-1].end() <= modules[0].start():
+-        raise ValueError("model response does not contain a complete Verilog module")
+-    return source[modules[0].start() : ends[-1].end()].strip()
++
++    candidates = [
++        *reversed(fenced),
++        *reversed(marked),
++        response,
++    ]
++
++    for candidate in candidates:
++        source = re.sub(
++            r"(?m)^[ \t]*```[^\r\n]*\r?\n?",
++            "",
++            candidate,
++        ).strip()
++
++        modules = list(
++            re.finditer(
++                r"\bmodule\s+(?:automatic\s+)?[A-Za-z_][A-Za-z0-9_$]*",
++                source,
++                flags=re.IGNORECASE,
++            )
++        )
++        ends = list(
++            re.finditer(
++                r"\bendmodule\b",
++                source,
++                flags=re.IGNORECASE,
++            )
++        )
++
++        if modules and ends and ends[-1].end() > modules[0].start():
++            return source[
++                modules[0].start():ends[-1].end()
++            ].strip()
++
++    raise ValueError(
++        "model response does not contain a complete Verilog module"
++    )
+ 
+ 
+ class VerilogGenerator:
+diff --git a/octotools/verilog/pipeline.py b/octotools/verilog/pipeline.py
+index 0d4d7dd..95e4a40 100644
+--- a/octotools/verilog/pipeline.py
++++ b/octotools/verilog/pipeline.py
+@@ -89,6 +89,15 @@ class VerilogPipeline:
+             feedback = evidence.get("output") or "No verifier is installed. Review syntax and interface."
+ 
+         if not selected:
+-            raise RuntimeError("all model responses failed Verilog extraction")
+-        verified = bool(history[-1].get("verification", {}).get("functionally_verified"))
++            return PipelineResult(
++                code="",
++                verified=False,
++                attempts=history,
++                model=self.generator.model,
++            )
++        verified = bool(
++            history[-1]
++            .get("verification", {})
++            .get("functionally_verified")
++        )
+         return PipelineResult(selected, verified, history, self.generator.model)

@@ -19,7 +19,7 @@ class Solver:
         max_steps: int = 10,
         max_time: int = 300,
         max_tokens: int = 4000,
-        root_cache_dir: str = "cache",
+        workspace_dir: str = "runs/agent-work",
         verbose: bool = True
     ):
         self.planner = planner
@@ -28,7 +28,7 @@ class Solver:
         self.max_steps = max_steps
         self.max_time = max_time
         self.max_tokens = max_tokens
-        self.root_cache_dir = root_cache_dir
+        self.workspace_dir = workspace_dir
         self.output_types = output_types.lower().split(',')
         assert all(output_type in ["base", "final", "direct"] for output_type in self.output_types), "Invalid output type. Supported types are 'base', 'final', 'direct'."
         #参数校验断言
@@ -40,8 +40,10 @@ class Solver:
         Args:
             index (int): Index of the problem to solve
         """
-        # Update cache directory for the executor
-        self.executor.set_query_cache_dir(self.root_cache_dir)
+        # Plans are never cached. The workspace only stores current-run artifacts.
+        self.memory.clear()
+        self.memory.set_query(question)
+        self.executor.set_workspace_dir(self.workspace_dir)
 
         # Initialize json_data with basic problem information
         json_data = {
@@ -201,7 +203,7 @@ def construct_solver(#初始化
                      max_steps : int = 10,
                      max_time : int = 300,
                      max_tokens : int = 4000,
-                     root_cache_dir : str = "solver_cache",
+                     workspace_dir : str = "runs/agent-work",
                      verbose : bool = True,
                      vllm_config_path : str = None):
     
@@ -227,7 +229,7 @@ def construct_solver(#初始化
     # Instantiate Executor
     executor = Executor(
         llm_engine_name=llm_engine_name,
-        root_cache_dir=root_cache_dir,
+        workspace_dir=workspace_dir,
         verbose=verbose,
     )
 
@@ -240,7 +242,7 @@ def construct_solver(#初始化
         max_steps=max_steps,
         max_time=max_time,
         max_tokens=max_tokens,
-        root_cache_dir=root_cache_dir,
+        workspace_dir=workspace_dir,
         verbose=verbose,
     )
     return solver
@@ -254,7 +256,7 @@ def parse_arguments():
         help="Comma-separated list of required outputs (base,final,direct)"
     )
     parser.add_argument("--enabled_tools", default="Generalist_Solution_Generator_Tool", help="List of enabled tools.")
-    parser.add_argument("--root_cache_dir", default="solver_cache", help="Path to solver cache directory.")
+    parser.add_argument("--workspace_dir", default="runs/agent-work", help="Directory for current-run tool artifacts.")
     parser.add_argument("--max_tokens", type=int, default=4000, help="Maximum tokens for LLM generation.")
     parser.add_argument("--max_steps", type=int, default=10, help="Maximum number of steps to execute.")
     parser.add_argument("--max_time", type=int, default=300, help="Maximum time allowed in seconds.")
@@ -268,7 +270,7 @@ def main(args):
                               max_steps=args.max_steps, 
                               max_time=args.max_time, 
                               max_tokens=args.max_tokens, 
-                              root_cache_dir=args.root_cache_dir,
+                              workspace_dir=args.workspace_dir,
                               verbose=args.verbose)
 
     # Solve the task or problem

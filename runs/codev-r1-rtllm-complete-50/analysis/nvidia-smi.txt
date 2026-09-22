@@ -1,0 +1,72 @@
+Thu Sep 17 16:06:33 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.54.14              Driver Version: 550.54.14      CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 3080        On  |   00000000:05:00.0 Off |                  N/A |
+| 55%   66C    P2            227W /  250W |   17299MiB /  20480MiB |    100%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA GeForce RTX 3080        On  |   00000000:08:00.0 Off |                  N/A |
+|100%   83C    P2            208W /  250W |   14315MiB /  20480MiB |     62%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA GeForce RTX 3080        On  |   00000000:09:00.0 Off |                  N/A |
+| 56%   65C    P2            114W /  250W |   13175MiB /  20480MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA GeForce RTX 3080        On  |   00000000:0A:00.0 Off |                  N/A |
+|  0%   29C    P8             21W /  250W |   19051MiB /  20480MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA GeForce RTX 3080        On  |   00000000:82:00.0 Off |                  N/A |
+| 96%   83C    P2            223W /  250W |   15234MiB /  20480MiB |     87%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA GeForce RTX 3080        On  |   00000000:85:00.0 Off |                  N/A |
+|100%   90C    P2            182W /  250W |   19577MiB /  20480MiB |     63%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA GeForce RTX 3080        On  |   00000000:86:00.0 Off |                  N/A |
+| 93%   80C    P2            201W /  250W |   19577MiB /  20480MiB |     44%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA GeForce RTX 3080        On  |   00000000:8A:00.0 Off |                  N/A |
+| 50%   50C    P2            101W /  250W |   13047MiB /  20480MiB |     14%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    0   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    0   N/A  N/A   3053352      C   ...e/ljh/.conda/envs/logart/bin/python      16008MiB |
+|    1   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    1   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    1   N/A  N/A   1590111      C   ...ts/tender_accuracy_py311/bin/python      14284MiB |
+|    2   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    2   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    2   N/A  N/A   3530839      C   python                                      13144MiB |
+|    3   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    3   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    3   N/A  N/A   3304420      C   ...t/.conda/envs/codev-vllm/bin/python      19020MiB |
+|    4   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    4   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    4   N/A  N/A   3529101      C   python                                       1742MiB |
+|    4   N/A  N/A   3530839      C   python                                      13456MiB |
+|    5   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    5   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    5   N/A  N/A   2633735      C   python                                      19546MiB |
+|    6   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    6   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    6   N/A  N/A   2633736      C   python                                      19546MiB |
+|    7   N/A  N/A      1326      G   /usr/lib/xorg/Xorg                              4MiB |
+|    7   N/A  N/A    189173      G   /usr/lib/xorg/Xorg                              4MiB |
+|    7   N/A  N/A   3281890      C   ....conda/envs/origen-quant/bin/python      13016MiB |
++-----------------------------------------------------------------------------------------+

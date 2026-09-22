@@ -1,0 +1,3 @@
+/tmp/octoverilog-pj3e63b4/testbench.sv:66: error: parameter `DATA_WIDTH` not found in `tb_adder64.u_pip_add64`.
+/tmp/octoverilog-pj3e63b4/testbench.sv:67: error: parameter `STG_WIDTH` not found in `tb_adder64.u_pip_add64`.
+3 error(s) during elaboration.

@@ -1,0 +1,8 @@
+/tmp/octoverilog-irqj1ep6/design.sv:13: error: Unknown module type: cla_8bit
+/tmp/octoverilog-irqj1ep6/design.sv:24: error: Unknown module type: cla_8bit
+/tmp/octoverilog-irqj1ep6/design.sv:35: error: Unknown module type: cla_8bit
+/tmp/octoverilog-irqj1ep6/design.sv:46: error: Unknown module type: cla_8bit
+5 error(s) during elaboration.
+*** These modules were missing:
+        cla_8bit referenced 4 times.
+***

@@ -1,0 +1,1 @@
+3303122 /home/htt/.conda/envs/codev-vllm/bin/python /home/htt/.conda/envs/codev-vllm/bin/vllm serve /home/datasets/huggingface/hub/CodeV-R1-RL-Qwen-7B --host 127.0.0.1 --port 8000 --served-model-name codev-r1 --trust-remote-code --tokenizer-mode auto --dtype auto --gpu-memory-utilization 0.95 --max-model-len 4096 --enforce-eager

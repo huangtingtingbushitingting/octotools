@@ -1,0 +1,4 @@
+/tmp/octoverilog-4oemaukj/design.sv:12: syntax error
+/tmp/octoverilog-4oemaukj/design.sv:12: error: Syntax error between internal '}' and closing '}' of repeat concatenation.
+/tmp/octoverilog-4oemaukj/design.sv:13: syntax error
+/tmp/octoverilog-4oemaukj/design.sv:13: error: Syntax error between internal '}' and closing '}' of repeat concatenation.

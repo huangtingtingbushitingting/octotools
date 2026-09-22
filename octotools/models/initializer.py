@@ -21,8 +21,10 @@ class Initializer:
         print(f"LLM engine name: {self.model_string}")
         self._set_up_tools()
 
-        # if vllm, set up the vllm server
-        if model_string.startswith("vllm-"):
+        # OctoVerilog normally connects to an already running OpenAI-compatible
+        # vLLM endpoint. Only start a local server when a config was explicitly
+        # supplied; implicit startup caused duplicate servers and GPU OOMs.
+        if model_string.startswith("vllm-") and vllm_config_path:
             self.setup_vllm_server()
 
     def get_project_root(self):#动态地向上递归查找文件系统的父目录，直到找到包含octotools子文件夹的路径
@@ -124,7 +126,10 @@ class Initializer:
                 tool_class = getattr(module, tool_name)
 
                 # Instantiate the tool
-                tool_instance = tool_class()
+                if getattr(tool_class, 'require_llm_engine', False):
+                    tool_instance = tool_class(model_string=self.model_string)
+                else:
+                    tool_instance = tool_class()
 
                 #执行每个工具的demo_cimmands,验证工具在真是的API调用下是否可用
                 """
@@ -224,4 +229,3 @@ if __name__ == "__main__":
 
     print("\nToolbox metadata for available tools:")
     print(initializer.toolbox_metadata)
-    
