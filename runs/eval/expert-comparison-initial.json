@@ -1,0 +1,38 @@
+{
+  "note": "Initial expert-LoRA held-out baseline; numeric test split was empty, so validation split was used.",
+  "evaluations": [
+    {
+      "dataset": "/home/htt/OctoVerilog/datasets/repair/general_complex/test.evaluation.jsonl",
+      "total": 4,
+      "base_model": "vllm-codev-r1",
+      "baseline_passed": 0,
+      "baseline_accuracy": 0.0,
+      "expert_passed": 0,
+      "expert_accuracy": 0.0,
+      "absolute_accuracy_gain": 0.0,
+      "strict_expert": true
+    },
+    {
+      "dataset": "/home/htt/OctoVerilog/datasets/repair/numeric_vector/validation.evaluation.jsonl",
+      "total": 2,
+      "base_model": "vllm-codev-r1",
+      "baseline_passed": 0,
+      "baseline_accuracy": 0.0,
+      "expert_passed": 0,
+      "expert_accuracy": 0.0,
+      "absolute_accuracy_gain": 0.0,
+      "strict_expert": true
+    },
+    {
+      "dataset": "/home/htt/OctoVerilog/datasets/repair/temporal_fsm/test.evaluation.jsonl",
+      "total": 9,
+      "base_model": "vllm-codev-r1",
+      "baseline_passed": 0,
+      "baseline_accuracy": 0.0,
+      "expert_passed": 0,
+      "expert_accuracy": 0.0,
+      "absolute_accuracy_gain": 0.0,
+      "strict_expert": true
+    }
+  ]
+}

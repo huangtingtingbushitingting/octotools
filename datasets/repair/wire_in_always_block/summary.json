@@ -1,0 +1,13 @@
+{
+  "category": "wire_in_always_block",
+  "source_cases": 18,
+  "accepted": 17,
+  "rejected": 1,
+  "accepted_by_split": {
+    "train": 13,
+    "validation": 1,
+    "test": 3
+  },
+  "grouped_by_task_id": true,
+  "acceptance_rule": "failed source RTL and reference RTL passing iverilog, vvp, and yosys"
+}

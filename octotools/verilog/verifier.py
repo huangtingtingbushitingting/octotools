@@ -11,6 +11,23 @@ from pathlib import Path
 from typing import Any
 
 
+class VerificationGate:
+    """Aggregate tool-level EDA evidence into one delivery decision."""
+
+    @staticmethod
+    def assess(
+        checks: dict[str, Any], *, has_testbench: bool, has_reference: bool
+    ) -> dict[str, Any]:
+        required = {"compile": checks.get("compile", {}).get("compile_success") is True}
+        required["synthesis"] = checks.get("synthesis", {}).get("synthesis_success") is True
+        if has_testbench:
+            required["simulation"] = checks.get("simulation", {}).get("simulation_success") is True
+        if has_reference:
+            required["equivalence"] = checks.get("equivalence", {}).get("equivalence_success") is True
+        passed = all(required.values())
+        return {"passed": passed, "required": required, "failed": [name for name, ok in required.items() if not ok]}
+
+
 class VerilogVerifier:
     def __init__(
         self,

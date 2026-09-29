@@ -2,7 +2,7 @@ from octotools.tools.base import BaseTool
 from octotools.verilog.generator import VerilogGenerator
 
 
-class VerilogRepairTool(BaseTool):
+class VerilogRepairTool(BaseTool):#直接选择通用工具
     require_llm_engine = True
 
     def __init__(self, model_string=None):
@@ -18,9 +18,22 @@ class VerilogRepairTool(BaseTool):
         self.generator = VerilogGenerator(model=model_string)
 
     def execute(self, specification: str, candidate_code: str, verification_feedback: str, top_module: str = "TopModule", temperature: float = 0.2, max_tokens: int = 4096):
-        feedback = f"Previous candidate:\n{candidate_code}\n\nTool evidence from Memory:\n{verification_feedback}"
+        feedback = (
+            "Previous candidate:\n"
+            f"{candidate_code}\n\n"
+            "Tool evidence, localization annotations, and retrieved correction examples:\n"
+            f"{verification_feedback}"
+        )
         try:
             code, raw = self.generator.generate(specification, feedback, top_module=top_module, temperature=temperature, max_tokens=max_tokens)
-            return {"success": True, "code": code, "raw_response": raw}
+            return {
+                "success": True,
+                "code": code,
+                "raw_response": raw,
+                "model": self.generator.model,
+                "model_input": self.generator.last_prompt,
+                "usage": self.generator.last_usage,
+                "expert_used": False,
+            }
         except Exception as error:
             return {"success": False, "code": "", "error": f"{type(error).__name__}: {error}"}

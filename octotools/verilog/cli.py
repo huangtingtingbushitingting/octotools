@@ -1,4 +1,4 @@
-"""Command-line interface for focused Verilog generation."""
+"""Command-line interface for focused Verilog generation.是OctoVerilog的命令行接口，把底层的verilog生成流水线包装成用户友好的命令行工具"""
 
 from __future__ import annotations
 
@@ -29,6 +29,27 @@ def _add_generation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--top-module", default="TopModule")
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--max-tokens", type=int, default=4096)
+    parser.add_argument(
+        "--candidates-per-round",
+        type=int,
+        default=1,
+        help="number of candidates verified and ranked in each generation/repair round",
+    )
+    parser.add_argument(
+        "--trace-file",
+        type=Path,
+        help="append every candidate, EDA result, score, model, and token count as JSONL",
+    )
+    parser.add_argument(
+        "--expert-registry",
+        type=Path,
+        help="JSON registry mapping error categories to repair-only LoRA models",
+    )
+    parser.add_argument(
+        "--strict-expert",
+        action="store_true",
+        help="fail a repair instead of falling back when the selected expert is unavailable",
+    )
     parser.add_argument("--synthesize", action="store_true")
     parser.add_argument(
         "--reference-file",
@@ -54,7 +75,7 @@ def _interactive_help() -> None:
         "  /module NAME      change the required top-module name\n"
         "  /quit              leave interactive mode\n"
     )
-
+#打印交互式模式的帮助工具，列出可用的命令
 
 def _run_chat(
     args: argparse.Namespace,
@@ -117,6 +138,7 @@ def _run_chat(
                 synthesize=args.synthesize,
                 temperature=args.temperature,
                 max_tokens=args.max_tokens,
+                task_id=f"interactive_{sequence:03d}",
                 progress=reporter,
             )
         except Exception as error:  # keep the interactive session available
@@ -150,13 +172,13 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--output", type=Path, required=True)
     generate.add_argument("--report", type=Path)
     _add_generation_options(generate)
-
+#生成单个verilog设计
     batch = commands.add_parser("batch", help="generate designs from JSON/JSONL")
     batch.add_argument("--dataset", type=Path, required=True)
     batch.add_argument("--output-dir", type=Path, required=True)
     batch.add_argument("--limit", type=int)
     _add_generation_options(batch)
-
+#从json数据集中批量生成代码
     chat = commands.add_parser(
         "chat",
         aliases=["interactive"],
@@ -170,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--testbench", type=Path)
     _add_generation_options(chat)
     return parser
-
+#交互式生成verilog
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
@@ -183,6 +205,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         attempts=args.attempts,
         workspace_dir=str(workspace),
         verbose=not args.quiet,
+        candidates_per_round=args.candidates_per_round,
+        trace_file=str(args.trace_file or (workspace.parent / "candidates.jsonl")),
+        expert_registry=str(args.expert_registry) if args.expert_registry else None,
+        strict_expert=args.strict_expert,
     )
     reporter = ConsoleProgress(enabled=not args.quiet)
 
@@ -207,6 +233,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             synthesize=args.synthesize,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
+            task_id=args.output.stem,
             progress=reporter,
         )
         if args.report:
@@ -239,6 +266,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 synthesize=args.synthesize,
                 temperature=args.temperature,
                 max_tokens=args.max_tokens,
+                task_id=record.task_id,
                 progress=reporter,
             )
             output = args.output_dir / f"{_safe_name(record.task_id)}.sv"

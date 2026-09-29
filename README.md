@@ -115,6 +115,41 @@ Each batch item produces a `.sv` file. `results.jsonl` records its source task
 ID, selected candidate, attempts, and verification evidence. Dataset files are
 read-only; answers are always written under `--output-dir`.
 
+## Repair data and category experts
+
+Use `--candidates-per-round N` to generate, verify, and rank multiple candidates
+at every round. OctoVerilog appends every model input/output, model name, token
+usage, EDA evidence, category, score, rank, and parent repair link to
+`candidates.jsonl` (or `--trace-file`). Only a failed candidate followed by a
+child that passes every mandatory gate can become a repair-training pair.
+
+```bash
+octoverilog batch \
+  --model vllm-codev-r1 \
+  --dataset datasets/tasks.jsonl \
+  --attempts 3 \
+  --candidates-per-round 3 \
+  --trace-file runs/repair-collection/candidates.jsonl \
+  --output-dir runs/repair-collection
+
+octoverilog-repair-data from-traces \
+  --trace runs/repair-collection/candidates.jsonl \
+  --output-dir datasets/repair/from-runs
+```
+
+Category LoRAs are repair-only tools. The initial candidate always comes from
+the configured CodeV-R1 model. After EDA failure classification, the control
+layer consults `--expert-registry` and invokes `VerilogExpertRepairTool`; it
+then repeats the same compile, simulation, synthesis, and optional equivalence
+gate. See `docs/repair_lora.md` for the verified public-data conversion and
+LLaMA-Factory configuration.
+
+Each failed repair round also runs `VerilogLocalizerTool` and
+`VerilogRagTool`. The localizer marks suspicious RTL statements from EDA
+feedback; the RAG tool retrieves similar examples from the deployed
+RTLerror-analysis knowledge base. Both outputs are appended to the repair
+prompt and recorded in Agent Memory. Plan caching is not used.
+
 ## Python API
 
 ```python
@@ -131,7 +166,7 @@ print(result.code)
   hold tool artifacts such as `.sv` and `.vvp` files.
 - `IverilogTool`, `VvpTool`, `YosysTool`, and `YosysEquivalenceTool` run fixed
   subprocess argument lists with no model-generated shell command.
-- `VerilogGeneratorTool`, `VerilogRepairTool`, and `VerilogSearchTool` are
+- `VerilogGeneratorTool`, `VerilogRepairTool`, `VerilogExpertRepairTool`, and `VerilogSearchTool` are
   registered in the same OctoTools toolbox.
 - No runtime dependency on CodeV-R1 source code.
 - Generated text is treated as data and never executed through a shell.

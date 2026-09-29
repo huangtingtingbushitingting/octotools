@@ -13,20 +13,21 @@ from .verifier import VerilogVerifier
 
 
 @dataclass(frozen=True)
-class PipelineResult:
+class PipelineResult:#封装最终的输出结果和轨迹
     code: str
-    verified: bool
-    attempts: list[dict[str, Any]]
+    verified: bool#验证状态
+    attempts: list[dict[str, Any]]#尝试历史
     model: str
     plan: list[str] | None = None
     memory: dict[str, Any] | None = None
     last_candidate: str | None = None
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-class VerilogPipeline:
+class VerilogPipeline:#为命令行和python api提供统一入口，负责协调生成器、验证器和可选的LLM，完成verilog的生成、验证和修复
     def __init__(
         self,
         generator: VerilogGenerator | None,
@@ -45,18 +46,31 @@ class VerilogPipeline:
         self.agent_solver = agent_solver
 
     @classmethod
-    def from_model(
+    def from_model(#根据用户提供的LLM名称创建VerilogPipeline实例
         cls,
         model: str,
         *,
         attempts: int = 1,
         workspace_dir: str = "runs/agent-work",
         verbose: bool = True,
+        candidates_per_round: int = 1,
+        trace_file: str | None = None,
+        expert_registry: str | None = None,
+        strict_expert: bool = False,
     ) -> "VerilogPipeline":
-        agent = VerilogAgentSolver(model, attempts, workspace_dir, verbose)
+        agent = VerilogAgentSolver(
+            model,
+            attempts,
+            workspace_dir,
+            verbose,
+            candidates_per_round=candidates_per_round,
+            trace_file=trace_file,
+            expert_registry=expert_registry,
+            strict_expert=strict_expert,
+        )#创建agent实例
         return cls(None, attempts=attempts, agent_solver=agent)
-
-    def run(
+     #从提供的模型名称中创建pipeline实例
+    def run(#命令行和python api共同调用的核心入口，用于生成、验证和修复verilog
         self,
         specification: str,
         testbench: str | None = None,
@@ -66,6 +80,7 @@ class VerilogPipeline:
         synthesize: bool = False,
         temperature: float = 0.2,
         max_tokens: int = 4096,
+        task_id: str = "interactive",
         progress: ProgressCallback | None = None,
     ) -> PipelineResult:
         if not specification.strip():
@@ -79,6 +94,7 @@ class VerilogPipeline:
                 top_module=top_module,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                task_id=task_id,
                 progress=progress,
             )
             return PipelineResult(
@@ -89,9 +105,11 @@ class VerilogPipeline:
                 plan=result.get("plan"),
                 memory=result.get("memory"),
                 last_candidate=result.get("last_candidate"),
+                run_id=result.get("run_id"),
             )
 
-        def emit(
+
+        def emit(#事件进度描述函数
             stage: str,
             message: str,
             *,
@@ -108,7 +126,7 @@ class VerilogPipeline:
                     )
                 )
 
-        history: list[dict[str, Any]] = []
+        history: list[dict[str, Any]] = []#history保存每轮候选代码和验证结果，用于保存完整的尝试历史
         feedback: str | None = None
         selected = ""
         pipeline_started = time.monotonic()
@@ -168,10 +186,10 @@ class VerilogPipeline:
             )
             history.append(
                 {
-                    "attempt": number,
-                    "code": code,
-                    "raw_response": raw,
-                    "verification": evidence,
+                    "attempt": number,#候选者所在的阶段
+                    "code": code,#候选者代码
+                    "raw_response": raw,#llm原始输出
+                    "verification": evidence,#验证结果
                 }
             )
             summary = (

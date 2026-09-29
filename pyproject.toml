@@ -33,11 +33,18 @@ CodeV-R1 = "https://github.com/haoxufeng/CodeV-R1"
 
 [project.scripts]
 octoverilog = "octotools.verilog.cli:main"
+octoverilog-repair-data = "octotools.verilog.training.cli:main"
+octoverilog-train-repair-lora = "octotools.verilog.training.train_lora:main"
+octoverilog-inject-errors = "octotools.verilog.training.inject_errors:main"
 
 [project.optional-dependencies]
 dev = [
     "black>=25.1.0",
     "isort>=6.0.1"
+]
+repair-training = [
+    "peft>=0.15,<0.16",
+    "accelerate>=1.2,<2",
 ]
 
 [tool.black]

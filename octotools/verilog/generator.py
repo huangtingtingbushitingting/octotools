@@ -9,7 +9,7 @@ from typing import Any
 from octotools.engine.factory import create_llm_engine
 
 
-def extract_verilog(response: str) -> str:
+def extract_verilog(response: str) -> str:#提取完整的verilog模块
     """Extract complete Verilog modules from common and malformed formats."""
     if not isinstance(response, str) or not response.strip():
         raise ValueError("model returned an empty response")
@@ -72,12 +72,14 @@ class VerilogGenerator:
         self.model = model or "injected-engine"
         self.engine = engine or create_llm_engine(
             model_string=str(model), use_cache=False, is_multimodal=False
-        )
+        )#创建生成RTL的LLM实例
+        self.last_prompt = ""
+        self.last_usage: dict[str, Any] = {}
 
     def generate(
         self,
         specification: str,
-        feedback: str | None = None,
+        feedback: str | None = None,#包含编译错误、仿真错误、综合错误、定位结果和 RAG 示例
         *,
         top_module: str = "TopModule",
         temperature: float = 0.2,
@@ -92,10 +94,12 @@ class VerilogGenerator:
             prompt += (
                 "\n\nThe previous candidate failed deterministic verification. "
                 "Correct the design using this evidence:\n" + feedback[-6000:]
-            )
+            )#将前一轮候选代码加入修复提示词中，引导模型基于失败证据进行修复
         kwargs: dict[str, Any] = {
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        raw = str(self.engine(prompt, **kwargs))
+        self.last_prompt = prompt
+        raw = str(self.engine(prompt, **kwargs))#LLM生成RTL
+        self.last_usage = dict(getattr(self.engine, "last_usage", {}) or {})
         return extract_verilog(raw), raw

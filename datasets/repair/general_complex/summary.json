@@ -1,0 +1,7 @@
+{
+  "family": "general_complex",
+  "accepted": 31,
+  "scanned": 153,
+  "source": "directional_injection",
+  "acceptance_rule": "known-good RTL passes, injected RTL fails, known-good RTL is repair target"
+}

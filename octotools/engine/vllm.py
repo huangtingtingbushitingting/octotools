@@ -33,6 +33,7 @@ class ChatVLLM(EngineLM, CachedEngine):
         self.use_cache = use_cache
         self.system_prompt = system_prompt
         self.is_multimodal = is_multimodal
+        self.last_usage = {}
 
         if self.use_cache:
             root = platformdirs.user_cache_dir("octotools")
@@ -74,7 +75,7 @@ class ChatVLLM(EngineLM, CachedEngine):
         
 
         # Chat models without structured outputs
-        response = self.client.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model=self.model_string,
             messages=[
                 {"role": "system", "content": sys_prompt_arg},
@@ -87,7 +88,17 @@ class ChatVLLM(EngineLM, CachedEngine):
             max_tokens=max_tokens,
             top_p=top_p,
         )
-        response = response.choices[0].message.content
+        usage = getattr(completion, "usage", None)
+        if usage is None:
+            self.last_usage = {}
+        elif hasattr(usage, "model_dump"):
+            self.last_usage = usage.model_dump()
+        else:
+            self.last_usage = {
+                key: getattr(usage, key, None)
+                for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+            }
+        response = completion.choices[0].message.content
 
         if self.use_cache:
             self._save_cache(cache_key, response)
@@ -129,7 +140,7 @@ class ChatVLLM(EngineLM, CachedEngine):
                 return cache_or_none
 
 
-        response = self.client.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model=self.model_string,
             messages=[
                 {"role": "system", "content": sys_prompt_arg},
@@ -139,7 +150,9 @@ class ChatVLLM(EngineLM, CachedEngine):
             max_tokens=max_tokens,
             top_p=top_p,
         )
-        response_text = response.choices[0].message.content
+        usage = getattr(completion, "usage", None)
+        self.last_usage = usage.model_dump() if hasattr(usage, "model_dump") else {}
+        response_text = completion.choices[0].message.content
 
         if self.use_cache:
             self._save_cache(cache_key, response_text)

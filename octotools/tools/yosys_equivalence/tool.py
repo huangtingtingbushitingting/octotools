@@ -8,7 +8,7 @@ from pathlib import Path
 from octotools.tools.base import BaseTool
 
 
-class YosysEquivalenceTool(BaseTool):
+class YosysEquivalenceTool(BaseTool):#进行参考RTL与候选RTL的等价性检查
     def __init__(self):
         super().__init__(
             tool_name="YosysEquivalenceTool",
@@ -22,7 +22,7 @@ class YosysEquivalenceTool(BaseTool):
     def check_availability(self):
         return shutil.which("yosys") is not None
 
-    def execute(self, candidate_code: str, reference_code: str, top_module: str = "TopModule", timeout: float = 120.0):
+    def execute(self, candidate_code: str, reference_code: str, top_module: str = "TopModule", timeout: float = 120.0):#调用Yosys执行等价性检查
         executable = shutil.which("yosys")
         if not executable:
             return {"success": False, "equivalence_success": False, "error": "yosys not found"}
@@ -38,7 +38,7 @@ class YosysEquivalenceTool(BaseTool):
             f"read_verilog -sv {reference.as_posix()}", f"prep -top {top_module}", f"rename {top_module} gold", "design -stash gold", "design -reset",
             f"read_verilog -sv {candidate.as_posix()}", f"prep -top {top_module}", f"rename {top_module} gate", "design -stash gate", "design -reset",
             "design -copy-from gold -as gold gold", "design -copy-from gate -as gate gate", "equiv_make gold gate equiv", "hierarchy -top equiv", "equiv_simple", "equiv_induct -undef", "equiv_status -assert",
-        ])
+        ])#进行Yosys等价性检查的脚本
         try:
             process = subprocess.run([executable, "-q", "-p", script], capture_output=True, text=True, timeout=timeout, check=False)
             passed = process.returncode == 0

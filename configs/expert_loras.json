@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "base_model": "codev-r1",
+  "experts": {
+    "wire_in_always_block": {
+      "enabled": true,
+      "model": "codev-r1-wire-in-always",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/wire_in_always_block"
+    },
+    "structural": {
+      "enabled": false,
+      "family": "Lora1",
+      "model": "codev-r1-structural",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/structural"
+    },
+    "temporal_fsm": {
+      "enabled": true,
+      "family": "Lora2",
+      "model": "codev-r1-temporal-fsm",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/temporal_fsm"
+    },
+    "numeric_vector": {
+      "enabled": true,
+      "family": "Lora3",
+      "model": "codev-r1-numeric-vector",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/numeric_vector"
+    },
+    "general_complex": {
+      "enabled": true,
+      "family": "Lora4",
+      "model": "codev-r1-general-complex",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/general_complex"
+    }
+  }
+}

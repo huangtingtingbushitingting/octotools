@@ -1,0 +1,11 @@
+finetuning_type: lora
+model_name_or_path: /home/datasets/huggingface/hub/CodeV-R1-RL-Qwen-7B
+dataset_dir: /home/htt/OctoVerilog/datasets/repair/numeric_vector
+dataset: train.sft
+eval_dataset: validation.sft
+output_dir: /home/htt/OctoVerilog/adapters/numeric_vector
+lora_rank: 16
+lora_alpha: 32
+learning_rate: 1.0e-4
+num_train_epochs: 3
+cutoff_len: 2048

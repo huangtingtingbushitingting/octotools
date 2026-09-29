@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "base_model": "codev-r1",
+  "experts": {
+    "wire_in_always_block": {
+      "enabled": true,
+      "model": "codev-r1-wire-in-always",
+      "adapter_path": "/home/htt/OctoVerilog/adapters/wire_in_always_block"
+    }
+  }
+}

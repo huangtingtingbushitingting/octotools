@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -38,7 +39,15 @@ class IverilogTool(BaseTool):
         )
 
     def check_availability(self):
-        return shutil.which("iverilog") is not None
+        return self._executable() is not None
+
+    @staticmethod
+    def _executable() -> str | None:
+        configured = os.environ.get("OCTOVERILOG_IVERILOG_PATH")
+        if configured:
+            path = Path(configured).expanduser()
+            return str(path) if path.is_file() else None
+        return shutil.which("iverilog")
 
     def execute(
         self,
@@ -48,7 +57,7 @@ class IverilogTool(BaseTool):
         candidate_name: str = "candidate",
         timeout: float = 30.0,
     ):
-        executable = shutil.which("iverilog")
+        executable = self._executable()
         if not executable:
             return {"success": False, "compile_success": False, "error": "iverilog not found"}
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", top_module):
