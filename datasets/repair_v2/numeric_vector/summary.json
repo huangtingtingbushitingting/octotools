@@ -1,0 +1,17 @@
+{
+  "family": "numeric_vector",
+  "accepted": 60,
+  "scanned": 128,
+  "source": "directional_injection",
+  "accepted_by_split": {
+    "train": 44,
+    "test": 8,
+    "validation": 8
+  },
+  "problem_groups_by_split": {
+    "train": 35,
+    "validation": 7,
+    "test": 8
+  },
+  "acceptance_rule": "known-good RTL passes, injected RTL fails, known-good RTL is repair target"
+}

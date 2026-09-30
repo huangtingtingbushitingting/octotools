@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,33 @@ REPAIR_SYSTEM_PROMPT = (
 
 
 def verification_feedback(verification: dict[str, Any]) -> str:
-    return json.dumps(verification, ensure_ascii=False, indent=2, default=str)[-12000:]
+    """Keep actionable EDA diagnostics within the model context budget."""
+    compact: dict[str, Any] = {"gate_passed": verification.get("gate_passed")}
+    for stage in ("compile", "simulation", "synthesis", "equivalence"):
+        result = verification.get(stage)
+        if not isinstance(result, dict):
+            continue
+        item: dict[str, Any] = {}
+        for key in (
+            "compile_success", "simulation_success", "synthesis_success",
+            "equivalence_success", "returncode", "error", "reported_failure_counts",
+        ):
+            if key in result:
+                item[key] = result[key]
+        diagnostic = "\n".join(
+            str(result.get(key) or "") for key in ("stderr", "stdout", "output")
+        )
+        important = [
+            line for line in diagnostic.splitlines()
+            if any(word in line.lower() for word in (
+                "error", "warning", "mismatch", "first", "failed", "timeout",
+            ))
+        ]
+        diagnostic = "\n".join((important or diagnostic.splitlines())[-8:])[-900:]
+        diagnostic = re.sub(r"/tmp/[^\s:]+/", "<temporary>/", diagnostic)
+        item["diagnostic"] = diagnostic
+        compact[stage] = item
+    return json.dumps(compact, ensure_ascii=False, separators=(",", ":"))[:3000]
 
 
 def repair_prompt(
